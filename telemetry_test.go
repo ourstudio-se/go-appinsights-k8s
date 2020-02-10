@@ -11,45 +11,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type telemetry_mockTelemetryClient struct {
+type mockTelemetryClient struct {
 	ctx     *appinsights.TelemetryContext
 	tracked appinsights.Telemetry
 }
 
-func (m *telemetry_mockTelemetryClient) Channel() appinsights.TelemetryChannel {
+func (m *mockTelemetryClient) Channel() appinsights.TelemetryChannel {
 	return nil
 }
-func (m *telemetry_mockTelemetryClient) Context() *appinsights.TelemetryContext {
+func (m *mockTelemetryClient) Context() *appinsights.TelemetryContext {
 	return m.ctx
 }
-func (m *telemetry_mockTelemetryClient) InstrumentationKey() string {
+func (m *mockTelemetryClient) InstrumentationKey() string {
 	return ""
 }
-func (m *telemetry_mockTelemetryClient) IsEnabled() bool {
+func (m *mockTelemetryClient) IsEnabled() bool {
 	return true
 }
-func (_ *telemetry_mockTelemetryClient) SetIsEnabled(_ bool) {}
-func (m *telemetry_mockTelemetryClient) Track(t appinsights.Telemetry) {
+func (*mockTelemetryClient) SetIsEnabled(_ bool) {}
+func (m *mockTelemetryClient) Track(t appinsights.Telemetry) {
 	m.tracked = t
 }
-func (_ *telemetry_mockTelemetryClient) TrackAvailability(name string, duration time.Duration, success bool) {
+func (*mockTelemetryClient) TrackAvailability(name string, duration time.Duration, success bool) {
 }
-func (_ *telemetry_mockTelemetryClient) TrackEvent(name string)                 {}
-func (_ *telemetry_mockTelemetryClient) TrackException(err interface{})         {}
-func (_ *telemetry_mockTelemetryClient) TrackMetric(name string, value float64) {}
-func (_ *telemetry_mockTelemetryClient) TrackRemoteDependency(name, dependencyType, target string, success bool) {
+func (*mockTelemetryClient) TrackEvent(name string)                 {}
+func (*mockTelemetryClient) TrackException(err interface{})         {}
+func (*mockTelemetryClient) TrackMetric(name string, value float64) {}
+func (*mockTelemetryClient) TrackRemoteDependency(name, dependencyType, target string, success bool) {
 }
-func (_ *telemetry_mockTelemetryClient) TrackRequest(method, uri string, duration time.Duration, responseCode string) {
+func (*mockTelemetryClient) TrackRequest(method, uri string, duration time.Duration, responseCode string) {
 }
-func (_ *telemetry_mockTelemetryClient) TrackTrace(name string, severity contracts.SeverityLevel) {}
+func (*mockTelemetryClient) TrackTrace(name string, severity contracts.SeverityLevel) {}
 
-type telemetry_mockInitializer struct {
+type mockInitializer struct {
 	called int
 	spec   *runtimeSpec
 	err    error
 }
 
-func (m *telemetry_mockInitializer) ReadPropertySpec() (*runtimeSpec, error) {
+func (m *mockInitializer) ReadPropertySpec() (*runtimeSpec, error) {
 	m.called = m.called + 1
 
 	if m.spec != nil {
@@ -63,7 +63,7 @@ func Test_That_Apply_Initializes_Property_Handling_When_Uninitialized(t *testing
 	c := &kubernetesTelemetryClient{
 		active:      true,
 		initialized: false,
-		initializer: &telemetry_mockInitializer{},
+		initializer: &mockInitializer{},
 	}
 
 	m := make(map[string]string)
@@ -73,7 +73,7 @@ func Test_That_Apply_Initializes_Property_Handling_When_Uninitialized(t *testing
 }
 
 func Test_That_Apply_Initializes_Property_Handling_Only_Once(t *testing.T) {
-	i := &telemetry_mockInitializer{}
+	i := &mockInitializer{}
 	c := &kubernetesTelemetryClient{
 		active:      true,
 		initialized: false,
@@ -91,7 +91,7 @@ func Test_That_Apply_Initializes_Property_Handling_Only_Once(t *testing.T) {
 func Test_That_Apply_Deactivates_Telemetry_Enhancements_On_Initialization_Error(t *testing.T) {
 	c := &kubernetesTelemetryClient{
 		initialized: false,
-		initializer: &telemetry_mockInitializer{err: errors.New("mock")},
+		initializer: &mockInitializer{err: errors.New("mock")},
 	}
 
 	m := make(map[string]string)
@@ -122,7 +122,7 @@ func Test_That_Apply_Skips_Telemetry_Enhancing_Properties_When_Deactivated(t *te
 	c := &kubernetesTelemetryClient{
 		active:      false,
 		initialized: true,
-		initializer: &telemetry_mockInitializer{spec: s},
+		initializer: &mockInitializer{spec: s},
 		properties:  p,
 	}
 
@@ -136,12 +136,12 @@ func Test_That_Initialize_Assigns_Telemetry_Context_Role_To_DeploymentName(t *te
 	s := newSpec()
 
 	c := &kubernetesTelemetryClient{
-		TelemetryClient: &telemetry_mockTelemetryClient{
+		TelemetryClient: &mockTelemetryClient{
 			ctx: appinsights.NewTelemetryContext(""),
 		},
 		active:      true,
 		initialized: false,
-		initializer: &telemetry_mockInitializer{spec: s},
+		initializer: &mockInitializer{spec: s},
 		properties:  s.ToPropertyMap(),
 	}
 
@@ -151,23 +151,23 @@ func Test_That_Initialize_Assigns_Telemetry_Context_Role_To_DeploymentName(t *te
 	assert.Equal(t, s.DeploymentName, role)
 }
 
-func Test_That_Initialize_Assigns_Telemetry_Context_RoleInstance_To_ReplicaSetName(t *testing.T) {
+func Test_That_Initialize_Assigns_Telemetry_Context_RoleInstance_To_PodName(t *testing.T) {
 	s := newSpec()
 
 	c := &kubernetesTelemetryClient{
-		TelemetryClient: &telemetry_mockTelemetryClient{
+		TelemetryClient: &mockTelemetryClient{
 			ctx: appinsights.NewTelemetryContext(""),
 		},
 		active:      true,
 		initialized: false,
-		initializer: &telemetry_mockInitializer{spec: s},
+		initializer: &mockInitializer{spec: s},
 		properties:  s.ToPropertyMap(),
 	}
 
 	c.initialize()
 
 	instance := c.TelemetryClient.Context().Tags.Cloud().GetRoleInstance()
-	assert.Equal(t, s.ReplicaSetName, instance)
+	assert.Equal(t, s.PodName, instance)
 }
 
 func Test_That_Track_Adds_Kubernetes_Properties_To_Telemetry(t *testing.T) {
@@ -175,12 +175,12 @@ func Test_That_Track_Adds_Kubernetes_Properties_To_Telemetry(t *testing.T) {
 	p := s.ToPropertyMap()
 
 	c := &kubernetesTelemetryClient{
-		TelemetryClient: &telemetry_mockTelemetryClient{
+		TelemetryClient: &mockTelemetryClient{
 			ctx: appinsights.NewTelemetryContext(""),
 		},
 		active:      true,
 		initialized: false,
-		initializer: &telemetry_mockInitializer{spec: s},
+		initializer: &mockInitializer{spec: s},
 		properties:  p,
 	}
 
